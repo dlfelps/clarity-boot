@@ -1,5 +1,6 @@
 """Stateful interactive session for Phase 1 Gherkin spec generation."""
 
+import os
 from pathlib import Path
 import click
 
@@ -17,10 +18,23 @@ class InteractiveSessionManager:
         self.gherkin_draft: str = ""
         self.feedback_log: list[str] = []
 
-    def run(self, output_path: str = "approved.feature") -> None:
+    def run(
+        self,
+        feature_name: str | None = None,
+        output_path: str | None = None,
+        model: str = "claude-sonnet-4-6",
+    ) -> None:
         """Start the interactive session.
 
         Loops until the user types 'approve', then writes the spec to output_path.
+
+        Args:
+            feature_name: Short name for the feature (e.g. "user_auth"). Used to
+                derive the output path as specs/<feature_name>.feature when
+                output_path is not given explicitly.
+            output_path: Explicit destination path. Overrides feature_name-derived
+                path. Kept for backward compatibility.
+            model: Anthropic model identifier to use for generation.
 
         Raises:
             click.ClickException: if the initial prompt is empty.
@@ -42,20 +56,44 @@ class InteractiveSessionManager:
         if not self.current_prompt:
             raise click.ClickException("Prompt cannot be empty.")
 
+        # Resolve output path.
+        if output_path is None:
+            if feature_name is None:
+                feature_name = click.prompt(
+                    "Feature name (used as filename in specs/)",
+                    prompt_suffix="\n> ",
+                ).strip()
+            output_path = os.path.join("specs", f"{feature_name}.feature")
+
+        # Load existing spec if one is already saved at the resolved path.
+        existing_draft = ""
+        if os.path.exists(output_path):
+            existing_draft = Path(output_path).read_text(encoding="utf-8").strip()
+            if existing_draft:
+                click.echo(
+                    f"\nFound existing spec at {output_path!r} — loading for refinement.\n"
+                )
+                click.echo("-" * 62)
+                click.echo(existing_draft)
+                click.echo("-" * 62)
+
         # Validate API key only after we know the prompt is non-empty.
-        self.agent = FeatureAgent()
+        self.agent = FeatureAgent(model=model)
 
-        click.echo("\nGenerating Gherkin specification…\n")
-        click.echo("-" * 62)
-
-        self.gherkin_draft, questions = self.agent.generate_gherkin(
-            self.current_prompt
-        )
-        # Always display the draft after generation (the streaming agent already
-        # prints tokens live, but echoing here ensures tests and non-streaming
-        # paths always show the result).
-        click.echo(self.gherkin_draft)
-        click.echo("-" * 62)
+        if existing_draft:
+            self.gherkin_draft = existing_draft
+            questions: list[str] = []
+        else:
+            click.echo("\nGenerating Gherkin specification…\n")
+            click.echo("-" * 62)
+            self.gherkin_draft, questions = self.agent.generate_gherkin(
+                self.current_prompt
+            )
+            # Always display the draft after generation (the streaming agent already
+            # prints tokens live, but echoing here ensures tests and non-streaming
+            # paths always show the result).
+            click.echo(self.gherkin_draft)
+            click.echo("-" * 62)
 
         while True:
             click.echo("\n" + "=" * 62)
