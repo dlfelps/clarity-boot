@@ -150,6 +150,50 @@ _FAILING_STEPS_PY = textwrap.dedent("""\
         pass
 """)
 
+# Two separate specs used to test multi-spec Phase 2 reporting.
+_SAMPLE_SPEC_CALCULATOR = textwrap.dedent("""\
+    Feature: Calculator Operations
+      As a developer
+      I want to verify basic arithmetic
+      So that the calculator is reliable.
+
+      Scenario: Adding two numbers
+        Given I have a calculator
+        When I add 2 and 3
+        Then the result should be 5
+""")
+
+_SAMPLE_SPEC_DIVISION = textwrap.dedent("""\
+    Feature: Division Operations
+      As a developer
+      I want to verify division behaviour
+      So that the calculator handles edge cases.
+
+      Scenario: Dividing by zero
+        Given I have a calculator
+        When I divide 5 by 0
+        Then I should see a division error
+""")
+
+
+def _make_multi_spec_project(base_dir: str) -> str:
+    """Create a project with two separate spec files in specs/."""
+    proj = os.path.join(base_dir, "multi_project")
+    src = os.path.join(proj, "src")
+    feat_steps = os.path.join(proj, "features", "steps")
+    specs = os.path.join(proj, "specs")
+    os.makedirs(src, exist_ok=True)
+    os.makedirs(feat_steps, exist_ok=True)
+    os.makedirs(specs, exist_ok=True)
+
+    _write(os.path.join(specs, "calculator.feature"), _SAMPLE_SPEC_CALCULATOR)
+    _write(os.path.join(specs, "division.feature"), _SAMPLE_SPEC_DIVISION)
+    _write(os.path.join(src, "app.py"), _SAMPLE_APP)
+    # Behave test feature covers both scenarios across both spec files.
+    _write(os.path.join(proj, "features", "calculator.feature"), _SAMPLE_APPROVED_FEATURE)
+    _write(os.path.join(feat_steps, "steps.py"), _SAMPLE_STEPS_PY)
+    return proj
+
 
 def _make_valid_project(base_dir: str) -> str:
     """Create a minimal valid target project in base_dir and return its path."""
@@ -383,7 +427,7 @@ def step_give_approval(context):
     context.approval_result = result
 
 
-@then('the system should lock the Gherkin file as the "approved.feature"')
+@then("the approved specification should be saved to disk")
 def step_approved_file_exists(context):
     assert os.path.exists(context.approved_path), (
         f"approved.feature not found at {context.approved_path}"
@@ -405,8 +449,8 @@ def step_phase1_complete_message(context):
 # Feature 2 — Transparency Report Generation
 # ===========================================================================
 
-@when('I instruct the Clarity Engine to generate a transparency report for "my_project"')
-def step_generate_report(context):
+@when('I instruct the Clarity Engine to generate a transparency report for "{project_name}"')
+def step_generate_report(context, project_name):
     context.report_dir = os.path.join(context.scenario_tmp, "report")
     context.report_result = _run_report(context.project_dir, context.report_dir)
 
@@ -607,3 +651,125 @@ def step_hotspot_flagged(context):
         f"(CC={css_scenario.cyclomatic_complexity}, avg={context.hotspot_avg_cc:.2f}, "
         f"threshold={2 * context.hotspot_avg_cc:.2f})"
     )
+
+
+# ===========================================================================
+# Feature 1 — Named files, scaffolding, existing project, loading existing spec
+# ===========================================================================
+
+@when('I approve a spec with the name "{name}" and the prompt: "{prompt}"')
+def step_approve_spec_with_name(context, name, prompt):
+    """Run clarity init with --output pointing into context.scenario_tmp/specs/.
+
+    Using an absolute --output path means any pre-existing files created by
+    a Given step (e.g. src/) remain visible to the session manager when it
+    computes the project root from the output path.
+    """
+    output_file = os.path.join(context.scenario_tmp, "specs", f"{name}.feature")
+    runner = CliRunner()
+    with _mock_llm_if_needed():
+        with runner.isolated_filesystem(temp_dir=context.scenario_tmp):
+            result = runner.invoke(
+                cli,
+                ["init", "--output", output_file],
+                input=f"{prompt}\napprove\n",
+                catch_exceptions=False,
+            )
+    context.cli_result = result
+    context.project_root = context.scenario_tmp
+
+
+@then('the specification should be saved to "{path}"')
+def step_spec_saved_to_path(context, path):
+    full = os.path.join(context.project_root, path)
+    assert os.path.exists(full), f"Expected spec at {full}"
+    with open(full, encoding="utf-8") as fh:
+        assert "Feature:" in fh.read(), f"File at {full} does not contain a Feature block"
+
+
+@then('the project should contain a "{path}" directory')
+def step_project_has_dir(context, path):
+    full = os.path.join(context.project_root, path)
+    assert os.path.isdir(full), f"Expected directory {path!r} in project at {full}"
+
+
+@then('the project should contain an "{path}" file')
+def step_project_has_file(context, path):
+    full = os.path.join(context.project_root, path)
+    assert os.path.isfile(full), f"Expected file {path!r} in project at {full}"
+
+
+@then("the system should confirm that the project scaffold was created")
+def step_scaffold_created_message(context):
+    assert "Project scaffold created" in context.cli_result.output, (
+        f"Expected scaffold creation message.\nOutput:\n{context.cli_result.output}"
+    )
+
+
+@given("the project already has an existing implementation")
+def step_existing_impl(context):
+    """Pre-create src/ so the session manager detects an existing project."""
+    os.makedirs(os.path.join(context.scenario_tmp, "src"), exist_ok=True)
+    os.makedirs(os.path.join(context.scenario_tmp, "features", "steps"), exist_ok=True)
+
+
+@then("the system should confirm the new spec was added to the existing project")
+def step_spec_added_to_existing(context):
+    assert "New spec added to existing project" in context.cli_result.output, (
+        f"Expected 'New spec added to existing project'.\nOutput:\n{context.cli_result.output}"
+    )
+
+
+@then("the existing implementation should remain intact")
+def step_existing_impl_intact(context):
+    assert os.path.isdir(os.path.join(context.project_root, "src")), (
+        "src/ was removed or replaced during spec approval"
+    )
+
+
+@given('an approved spec already exists for feature "{name}"')
+def step_existing_spec_exists(context, name):
+    specs_dir = os.path.join(context.scenario_tmp, "specs")
+    os.makedirs(specs_dir, exist_ok=True)
+    _write(os.path.join(specs_dir, f"{name}.feature"), _MOCK_GHERKIN)
+
+
+@when('I run Phase 1 again for feature "{name}" with the prompt: "{prompt}"')
+def step_run_phase1_again(context, name, prompt):
+    output_file = os.path.join(context.scenario_tmp, "specs", f"{name}.feature")
+    runner = CliRunner()
+    with _mock_llm_if_needed():
+        with runner.isolated_filesystem(temp_dir=context.scenario_tmp):
+            result = runner.invoke(
+                cli,
+                ["init", "--output", output_file],
+                input=f"{prompt}\napprove\n",
+                catch_exceptions=False,
+            )
+    context.cli_result = result
+
+
+@then("the system should load and display the existing spec")
+def step_existing_spec_loaded(context):
+    assert "Found existing spec" in context.cli_result.output, (
+        f"Expected 'Found existing spec' in output.\nOutput:\n{context.cli_result.output}"
+    )
+    assert "Feature:" in context.cli_result.output
+
+
+# ===========================================================================
+# Feature 2 — Multi-spec reporting
+# ===========================================================================
+
+@given("I have a completed project with multiple approved specs")
+def step_multi_spec_project(context):
+    context.project_dir = _make_multi_spec_project(context.scenario_tmp)
+
+
+@then("the report should contain metrics for all features across all specs")
+def step_multi_spec_report(context):
+    index = os.path.join(context.report_dir, "index.html")
+    with open(index, encoding="utf-8") as fh:
+        html = fh.read()
+    assert "Calculator Operations" in html, "Calculator Operations feature not found in report"
+    assert "Division Operations" in html, "Division Operations feature not found in report"

@@ -26,5 +26,27 @@ Feature: Project Initialization and Interactive Spec Generation
   Scenario: Finalizing and approving the Gherkin specification
     Given I am in an interactive session and am satisfied with the current Gherkin draft
     When I give the final approval for the specification
-    Then the system should lock the Gherkin file as the "approved.feature"
+    Then the approved specification should be saved to disk
     And the system should confirm that Phase 1 is complete and the feature is ready for implementation
+
+  Scenario: Saving a spec to a named feature file
+    When I approve a spec with the name "blog" and the prompt: "A simple blog platform."
+    Then the specification should be saved to "specs/blog.feature"
+
+  Scenario: Scaffolding the project structure on first approval
+    When I approve a spec with the name "blog" and the prompt: "A simple blog platform."
+    Then the project should contain a "src" directory
+    And the project should contain a "features/steps" directory
+    And the project should contain an "IMPLEMENTATION_INSTRUCTIONS.md" file
+    And the system should confirm that the project scaffold was created
+
+  Scenario: Adding a new feature spec to an existing project
+    Given the project already has an existing implementation
+    When I approve a spec with the name "checkout" and the prompt: "A checkout flow."
+    Then the system should confirm the new spec was added to the existing project
+    And the existing implementation should remain intact
+
+  Scenario: Loading an existing spec for iterative refinement
+    Given an approved spec already exists for feature "blog"
+    When I run Phase 1 again for feature "blog" with the prompt: "A simple blog platform."
+    Then the system should load and display the existing spec
