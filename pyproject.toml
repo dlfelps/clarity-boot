@@ -25,4 +25,4 @@ where = ["."]
 include = ["clarity*"]
 
 [tool.setuptools.package-data]
-clarity = ["data/*.md"]
+clarity = ["data/*"]
