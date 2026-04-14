@@ -121,14 +121,18 @@ class InteractiveSessionManager:
             command = user_input.lower()
 
             if command == "approve":
-                project_root = self._save(output_path)
+                project_root, is_new_project = self._save(output_path)
                 click.echo(
                     f"\n✓ Phase 1 complete. Specification saved to: {output_path}"
                 )
-                click.echo(f"\n  Project scaffold created at: {project_root}")
-                click.echo("    src/                           — place application code here")
-                click.echo("    features/steps/                — place behave step definitions here")
-                click.echo("    IMPLEMENTATION_INSTRUCTIONS.md — guidance for the implementing agent")
+                if is_new_project:
+                    click.echo(f"\n  Project scaffold created at: {project_root}")
+                    click.echo("    src/                           — place application code here")
+                    click.echo("    features/steps/                — place behave step definitions here")
+                    click.echo("    IMPLEMENTATION_INSTRUCTIONS.md — guidance for the implementing agent")
+                else:
+                    click.echo(f"\n  New spec added to existing project at: {project_root}")
+                    click.echo("  Implement the new scenarios and add corresponding behave steps to features/.")
                 return
 
             if command == "show":
@@ -155,11 +159,12 @@ class InteractiveSessionManager:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _save(self, output_path: str) -> Path:
+    def _save(self, output_path: str) -> tuple[Path, bool]:
         """Save the approved spec and scaffold the project structure.
 
         Returns:
-            The project root directory that was scaffolded.
+            (project_root, is_new_project) — the root directory and whether
+            it was created fresh (True) or already existed (False).
         """
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -168,11 +173,18 @@ class InteractiveSessionManager:
         # Project root is two levels up when the spec lives in specs/, otherwise
         # treat the spec's parent directory as the root.
         project_root = path.parent.parent if path.parent.name == "specs" else path.parent
-        self._setup_project(project_root)
-        return project_root
+        is_new_project = self._setup_project(project_root)
+        return project_root, is_new_project
 
-    def _setup_project(self, project_root: Path) -> None:
-        """Create the implementation scaffold expected by Phase 2."""
+    def _setup_project(self, project_root: Path) -> bool:
+        """Create the implementation scaffold expected by Phase 2.
+
+        Returns:
+            True if this is a new project (src/ did not exist), False if
+            adding a spec to an already-implemented project.
+        """
+        is_new = not (project_root / "src").exists()
+
         (project_root / "src").mkdir(exist_ok=True)
         (project_root / "features" / "steps").mkdir(parents=True, exist_ok=True)
 
@@ -181,3 +193,5 @@ class InteractiveSessionManager:
             src = Path(__file__).parent.parent / "data" / "IMPLEMENTATION_INSTRUCTIONS.md"
             if src.exists():
                 dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
+        return is_new
