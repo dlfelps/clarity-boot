@@ -54,6 +54,6 @@ Feature: Project Initialization and Interactive Spec Generation
   Scenario: Prompting for API key setup when no .env file is found
     Given no .env file exists in the current directory
     When I run clarity init without a configured API key
-    Then a ".env.template" file should be created in the current directory
+    Then a ".env" file should be created in the current directory
     And the system should display instructions for setting up the API key
     And the initialisation should not proceed further

@@ -14,8 +14,8 @@ def _ensure_env_file() -> bool:
     If CLAUDE_API_KEY is already present in the environment (set directly or
     loaded from .env by load_dotenv at import time) we proceed without comment.
     If it is absent and no .env file exists in the current directory, we create
-    a .env.template and print setup instructions, then return False so the
-    caller can abort gracefully.
+    a .env file with placeholder values and print setup instructions, then
+    return False so the caller can abort gracefully.
 
     Returns:
         True if it is safe to proceed, False if the command should abort.
@@ -26,21 +26,20 @@ def _ensure_env_file() -> bool:
     if os.path.exists(".env"):
         return True  # .env exists (key may be inside) — proceed
 
-    # No .env and no key in environment — create template and guide the user.
-    template_dst = Path(".env.template")
-    if not template_dst.exists():
-        template_src = Path(__file__).parent / "data" / ".env.template"
-        if template_src.exists():
-            template_dst.write_text(
-                template_src.read_text(encoding="utf-8"), encoding="utf-8"
-            )
+    # No .env and no key in environment — create .env with placeholders.
+    env_src = Path(__file__).parent / "data" / ".env.template"
+    env_content = (
+        env_src.read_text(encoding="utf-8")
+        if env_src.exists()
+        else "CLAUDE_API_KEY=your_anthropic_api_key_here\nCLARITY_MODEL=claude-sonnet-4-6\n"
+    )
+    Path(".env").write_text(env_content, encoding="utf-8")
 
     click.echo("No .env file found in the current directory.")
     click.echo()
-    click.echo("A .env.template file has been created. To get started:")
-    click.echo("  1. Copy .env.template to .env")
-    click.echo("  2. Open .env and set CLAUDE_API_KEY to your Anthropic API key")
-    click.echo("  3. Re-run: clarity init")
+    click.echo("A .env file has been created with placeholder values. To get started:")
+    click.echo("  1. Open .env and set CLAUDE_API_KEY to your Anthropic API key")
+    click.echo("  2. Re-run: clarity init")
     return False
 
 

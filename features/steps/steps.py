@@ -803,10 +803,12 @@ def step_init_without_api_key(context):
     context.project_root = td
 
 
-@then('a ".env.template" file should be created in the current directory')
-def step_env_template_created(context):
-    full = os.path.join(context.project_root, ".env.template")
-    assert os.path.exists(full), f".env.template not found at {context.project_root}"
+@then('a ".env" file should be created in the current directory')
+def step_env_file_created(context):
+    full = os.path.join(context.project_root, ".env")
+    assert os.path.exists(full), f".env not found at {context.project_root}"
+    with open(full, encoding="utf-8") as fh:
+        assert "CLAUDE_API_KEY" in fh.read(), ".env does not contain CLAUDE_API_KEY placeholder"
 
 
 @then("the system should display instructions for setting up the API key")
