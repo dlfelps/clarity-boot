@@ -1,0 +1,25 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables (keep template, ignore actual .env)
+.env
+
+# Coverage and test artefacts
+.coverage
+htmlcov/
+
+# Editor / OS
+.DS_Store
+*.swp
