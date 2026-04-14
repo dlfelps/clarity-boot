@@ -156,10 +156,12 @@ def _make_valid_project(base_dir: str) -> str:
     proj = os.path.join(base_dir, "my_project")
     src = os.path.join(proj, "src")
     feat_steps = os.path.join(proj, "features", "steps")
+    specs = os.path.join(proj, "specs")
     os.makedirs(src, exist_ok=True)
     os.makedirs(feat_steps, exist_ok=True)
+    os.makedirs(specs, exist_ok=True)
 
-    _write(os.path.join(proj, "approved.feature"), _SAMPLE_APPROVED_FEATURE)
+    _write(os.path.join(specs, "calculator.feature"), _SAMPLE_APPROVED_FEATURE)
     _write(os.path.join(src, "app.py"), _SAMPLE_APP)
     _write(os.path.join(proj, "features", "calculator.feature"),
            _SAMPLE_APPROVED_FEATURE)
@@ -445,9 +447,11 @@ def step_failing_project(context):
     proj = os.path.join(context.scenario_tmp, "failing_project")
     src = os.path.join(proj, "src")
     feat_steps = os.path.join(proj, "features", "steps")
+    specs = os.path.join(proj, "specs")
     os.makedirs(src, exist_ok=True)
     os.makedirs(feat_steps, exist_ok=True)
-    _write(os.path.join(proj, "approved.feature"), _SAMPLE_APPROVED_FEATURE)
+    os.makedirs(specs, exist_ok=True)
+    _write(os.path.join(specs, "calculator.feature"), _SAMPLE_APPROVED_FEATURE)
     _write(os.path.join(src, "app.py"), _SAMPLE_APP)
     _write(os.path.join(proj, "features", "calculator.feature"),
            _SAMPLE_APPROVED_FEATURE)
@@ -455,11 +459,11 @@ def step_failing_project(context):
     context.project_dir = proj
 
 
-@given('a project that is missing the "approved.feature" file')
+@given("a project that is missing the specs directory")
 def step_missing_approved_feature(context):
     proj = os.path.join(context.scenario_tmp, "incomplete_project")
     os.makedirs(os.path.join(proj, "features"), exist_ok=True)
-    # Intentionally omit approved.feature
+    # Intentionally omit specs/ directory
     context.project_dir = proj
 
 

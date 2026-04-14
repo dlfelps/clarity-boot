@@ -1,5 +1,6 @@
 """Orchestrates the Phase 2 report pipeline."""
 
+import glob
 import os
 from typing import List
 
@@ -69,13 +70,17 @@ class ReportManager:
         # ── 1. Validate ──────────────────────────────────────────────
         self._validate(project_dir)
 
-        approved = os.path.join(project_dir, "approved.feature")
+        specs_dir = os.path.join(project_dir, "specs")
+        feature_files = sorted(glob.glob(os.path.join(specs_dir, "*.feature")))
 
-        click.echo("Parsing approved.feature…")
-        parsed = parse_gherkin(approved)
+        click.echo(f"Parsing {len(feature_files)} spec file(s) from specs/…")
+        parsed: List[dict] = []
+        for ff in feature_files:
+            parsed.extend(parse_gherkin(ff))
+
         if not parsed:
             raise click.ClickException(
-                "No features found in approved.feature."
+                "No features found in specs/*.feature."
             )
 
         all_scenarios = [s["name"] for f in parsed for s in f["scenarios"]]
@@ -120,9 +125,12 @@ class ReportManager:
                 f"Project directory not found: {project_dir}"
             )
 
-        if not os.path.exists(os.path.join(project_dir, "approved.feature")):
+        specs_dir = os.path.join(project_dir, "specs")
+        if not os.path.isdir(specs_dir) or not glob.glob(
+            os.path.join(specs_dir, "*.feature")
+        ):
             raise click.ClickException(
-                "Project is missing the required 'approved.feature' file."
+                "Project is missing a 'specs/' directory with approved feature files."
             )
 
         if not os.path.isdir(os.path.join(project_dir, "features")):

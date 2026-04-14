@@ -5,10 +5,10 @@ Feature: Transparency Report Generation
 
   Background:
     Given I have a completed software project that includes:
-      | File Type                 | Path                             |
-      | An approved Gherkin spec  | my_project/approved.feature      |
-      | The application code      | my_project/src/app.py            |
-      | The passing test suite    | my_project/features/steps/steps.py |
+      | File Type                 | Path                                   |
+      | An approved Gherkin spec  | my_project/specs/calculator.feature    |
+      | The application code      | my_project/src/app.py                  |
+      | The passing test suite    | my_project/features/steps/steps.py     |
 
   Scenario: Generating a full report for a valid project
     When I instruct the Clarity Engine to generate a transparency report for "my_project"
@@ -24,7 +24,7 @@ Feature: Transparency Report Generation
     And the engine should show an error message: "Cannot generate a report for a project with failing tests."
 
   Scenario: Handling a project with missing files
-    Given a project that is missing the "approved.feature" file
+    Given a project that is missing the specs directory
     When I attempt to generate a transparency report
     Then the engine should halt the process
-    And the engine should show an error message: "Project is missing the required 'approved.feature' file."
+    And the engine should show an error message: "Project is missing a 'specs/' directory with approved feature files."

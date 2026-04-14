@@ -40,7 +40,7 @@ Feature: User Authentication
 class FeatureAgent:
     """Wraps the Anthropic API to generate and refine Gherkin specifications."""
 
-    def __init__(self) -> None:
+    def __init__(self, model: str = "claude-sonnet-4-6") -> None:
         api_key = os.environ.get("CLAUDE_API_KEY")
         if not api_key:
             raise RuntimeError(
@@ -48,7 +48,7 @@ class FeatureAgent:
                 "Please export your Anthropic API key as CLAUDE_API_KEY."
             )
         self.client = anthropic.Anthropic(api_key=api_key)
-        self.model = "claude-opus-4-6"
+        self.model = model
 
     def generate_gherkin(
         self,
