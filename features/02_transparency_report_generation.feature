@@ -28,3 +28,8 @@ Feature: Transparency Report Generation
     When I attempt to generate a transparency report
     Then the engine should halt the process
     And the engine should show an error message: "Project is missing a 'specs/' directory with approved feature files."
+
+  Scenario: Generating a report covering multiple feature specs
+    Given I have a completed project with multiple approved specs
+    When I instruct the Clarity Engine to generate a transparency report for "multi_project"
+    Then the report should contain metrics for all features across all specs
