@@ -50,7 +50,11 @@ def _make_mock_agent():
 @contextmanager
 def _mock_llm_if_needed():
     """Patch FeatureAgent when CLAUDE_API_KEY is absent, so Phase 1 CLI tests
-    work without a live API key while still exercising the session logic."""
+    work without a live API key while still exercising the session logic.
+
+    Also injects a dummy CLAUDE_API_KEY so the .env file check in cli.py is
+    bypassed — the real key is never used because FeatureAgent is mocked.
+    """
     if os.environ.get("CLAUDE_API_KEY"):
         yield  # real key present — hit the actual API
     else:
@@ -58,7 +62,8 @@ def _mock_llm_if_needed():
             "clarity.phase1.session_manager.FeatureAgent",
             return_value=_make_mock_agent(),
         ):
-            yield
+            with patch.dict(os.environ, {"CLAUDE_API_KEY": "mock-key-for-testing"}):
+                yield
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -295,8 +300,9 @@ def step_init_with_prompt(context, prompt):
 @when("I start a new project with an empty prompt")
 def step_init_empty_prompt(context):
     runner = CliRunner()
-    with runner.isolated_filesystem(temp_dir=context.scenario_tmp):
-        result = runner.invoke(cli, ["init"], input="\n", catch_exceptions=True)
+    with _mock_llm_if_needed():
+        with runner.isolated_filesystem(temp_dir=context.scenario_tmp):
+            result = runner.invoke(cli, ["init"], input="\n", catch_exceptions=True)
     context.cli_result = result
 
 
@@ -773,3 +779,47 @@ def step_multi_spec_report(context):
         html = fh.read()
     assert "Calculator Operations" in html, "Calculator Operations feature not found in report"
     assert "Division Operations" in html, "Division Operations feature not found in report"
+
+
+# ===========================================================================
+# Feature 1 — .env file check
+# ===========================================================================
+
+@given("no .env file exists in the current directory")
+def step_no_env_file(context):
+    pass  # isolated_filesystem starts clean; step is for Gherkin readability
+
+
+@when("I run clarity init without a configured API key")
+def step_init_without_api_key(context):
+    runner = CliRunner()
+    # Run with a clean environment that has no CLAUDE_API_KEY so the .env
+    # check in cli.py is triggered.
+    clean_env = {k: v for k, v in os.environ.items() if k != "CLAUDE_API_KEY"}
+    with runner.isolated_filesystem(temp_dir=context.scenario_tmp) as td:
+        with patch.dict(os.environ, clean_env, clear=True):
+            result = runner.invoke(cli, ["init"], catch_exceptions=False)
+    context.cli_result = result
+    context.project_root = td
+
+
+@then('a ".env.template" file should be created in the current directory')
+def step_env_template_created(context):
+    full = os.path.join(context.project_root, ".env.template")
+    assert os.path.exists(full), f".env.template not found at {context.project_root}"
+
+
+@then("the system should display instructions for setting up the API key")
+def step_api_key_instructions(context):
+    output = context.cli_result.output
+    assert "CLAUDE_API_KEY" in output, (
+        f"Expected API key instructions.\nOutput:\n{output}"
+    )
+    assert ".env" in output
+
+
+@then("the initialisation should not proceed further")
+def step_init_not_proceeded(context):
+    assert "Describe your project" not in context.cli_result.output, (
+        f"Session should not have started.\nOutput:\n{context.cli_result.output}"
+    )
