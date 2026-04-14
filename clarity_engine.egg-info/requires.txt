@@ -1,0 +1,6 @@
+click>=8.1
+anthropic>=0.49
+behave>=1.2
+coverage>=7.0
+radon>=6.0
+jinja2>=3.1

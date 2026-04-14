@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clarity-engine"
+version = "0.1.0"
+description = "A software observatory: BDD spec generation and complexity transparency reporting"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "anthropic>=0.49",
+    "behave>=1.2",
+    "coverage>=7.0",
+    "radon>=6.0",
+    "jinja2>=3.1",
+]
+
+[project.scripts]
+clarity = "clarity.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["clarity*"]

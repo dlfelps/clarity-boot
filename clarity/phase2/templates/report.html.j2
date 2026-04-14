@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clarity Engine — {{ data.project_name }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #2d3748;
+      line-height: 1.5;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .report-header {
+      background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+      color: #fff;
+      padding: 32px 40px;
+    }
+    .report-header h1 { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; }
+    .report-header h2 { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .report-header .meta { font-size: 13px; opacity: 0.5; margin-top: 8px; }
+
+    /* ── Layout ──────────────────────────────────────────────────── */
+    .container { max-width: 1160px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ── Section headings ────────────────────────────────────────── */
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 3px solid #4299e1;
+      display: inline-block;
+    }
+
+    /* ── Cards ───────────────────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #2d3748;
+      color: #fff;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .card-body { padding: 0; }
+
+    /* ── Tables ──────────────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: #edf2f7;
+      color: #4a5568;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      padding: 10px 16px;
+      text-align: left;
+      border-bottom: 2px solid #cbd5e0;
+    }
+    tbody td {
+      padding: 11px 16px;
+      border-bottom: 1px solid #edf2f7;
+      font-size: 14px;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f7fafc; }
+
+    /* feature summary — first column link */
+    .feat-link { color: #3182ce; text-decoration: none; font-weight: 600; }
+    .feat-link:hover { text-decoration: underline; }
+
+    /* ── Hotspot row ─────────────────────────────────────────────── */
+    tr.hotspot td {
+      background: #fffbeb;
+      border-left: 4px solid #f6ad55;
+    }
+    tr.hotspot:hover td { background: #fef3c7; }
+
+    .hotspot-badge {
+      display: inline-block;
+      background: #f6ad55;
+      color: #744210;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 8px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    /* ── Stat pill ───────────────────────────────────────────────── */
+    .pill {
+      display: inline-block;
+      background: #ebf8ff;
+      color: #2b6cb0;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .pill.cc  { background: #faf5ff; color: #6b46c1; }
+    .pill.loc { background: #f0fff4; color: #276749; }
+
+    /* ── Deps list ───────────────────────────────────────────────── */
+    .deps {
+      padding: 10px 20px 0;
+      font-size: 13px;
+      color: #718096;
+    }
+    .deps strong { color: #4a5568; }
+
+    /* ── Footer ──────────────────────────────────────────────────── */
+    .report-footer {
+      text-align: center;
+      color: #a0aec0;
+      font-size: 12px;
+      margin-top: 40px;
+      padding-bottom: 32px;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .report-header { padding: 20px; }
+      .container { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- Header                                                         -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<header class="report-header">
+  <h1>Clarity Engine — Transparency Report</h1>
+  <h2>{{ data.project_name }}</h2>
+  <p class="meta">Generated {{ generated_at }}</p>
+</header>
+
+<div class="container">
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- Section: Complexity Analysis                                 -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section id="complexity-analysis">
+    <h2 class="section-title">Complexity Analysis</h2>
+
+    <!-- Feature Summary Table -->
+    <div class="card" style="margin-bottom:32px;">
+      <div class="card-header">Feature Summary</div>
+      <div class="card-body">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Total Scenarios</th>
+              <th>Total Code Footprint (LOC)</th>
+              <th>Overall Cyclomatic Complexity</th>
+              <th>Component Dependencies</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for feature in data.features %}
+            <tr>
+              <td>
+                <a class="feat-link" href="#feature-{{ loop.index }}">
+                  {{ feature.name }}
+                </a>
+              </td>
+              <td><span class="pill">{{ feature.total_scenarios }}</span></td>
+              <td><span class="pill loc">{{ feature.total_loc }}</span></td>
+              <td><span class="pill cc">{{ feature.overall_cc }}</span></td>
+              <td>{{ feature.component_dependencies | length }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;color:#a0aec0;padding:24px;">
+              No features found.
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Per-Feature Scenario Breakdowns -->
+    {% for feature in data.features %}
+    <div id="feature-{{ loop.index }}" class="card">
+      <div class="card-header">{{ feature.name }}</div>
+
+      {% if feature.component_dependencies %}
+      <p class="deps">
+        <strong>Source files:</strong>
+        {{ feature.component_dependencies | join(", ") }}
+      </p>
+      {% endif %}
+
+      <div class="card-body">
+        <table>
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Code Footprint (LOC)</th>
+              <th>Cyclomatic Complexity</th>
+              <th>Unique Code Contribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for scenario in feature.scenarios %}
+            <tr class="{{ 'hotspot' if scenario.is_hotspot else '' }}">
+              <td>
+                {{ scenario.name }}
+                {% if scenario.is_hotspot %}
+                <span class="hotspot-badge">⚠ Complexity Hotspot</span>
+                {% endif %}
+              </td>
+              <td><span class="pill loc">{{ scenario.loc }}</span></td>
+              <td><span class="pill cc">{{ scenario.cyclomatic_complexity }}</span></td>
+              <td><span class="pill">{{ scenario.unique_loc }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center;color:#a0aec0;padding:16px;">
+              No scenarios found.
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+
+  </section><!-- /complexity-analysis -->
+
+</div><!-- /container -->
+
+<footer class="report-footer">
+  <p>Produced by <strong>Clarity Engine</strong> &mdash; Software Observatory</p>
+</footer>
+
+</body>
+</html>

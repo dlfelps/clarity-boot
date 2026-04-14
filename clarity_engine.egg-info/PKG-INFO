@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: clarity-engine
+Version: 0.1.0
+Summary: A software observatory: BDD spec generation and complexity transparency reporting
+Requires-Python: >=3.11
+Requires-Dist: click>=8.1
+Requires-Dist: anthropic>=0.49
+Requires-Dist: behave>=1.2
+Requires-Dist: coverage>=7.0
+Requires-Dist: radon>=6.0
+Requires-Dist: jinja2>=3.1
