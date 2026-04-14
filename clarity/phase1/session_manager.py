@@ -121,13 +121,14 @@ class InteractiveSessionManager:
             command = user_input.lower()
 
             if command == "approve":
-                self._save(output_path)
+                project_root = self._save(output_path)
                 click.echo(
                     f"\n✓ Phase 1 complete. Specification saved to: {output_path}"
                 )
-                click.echo(
-                    "  The feature is ready for implementation."
-                )
+                click.echo(f"\n  Project scaffold created at: {project_root}")
+                click.echo("    src/                           — place application code here")
+                click.echo("    features/steps/                — place behave step definitions here")
+                click.echo("    IMPLEMENTATION_INSTRUCTIONS.md — guidance for the implementing agent")
                 return
 
             if command == "show":
@@ -154,7 +155,29 @@ class InteractiveSessionManager:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _save(self, output_path: str) -> None:
+    def _save(self, output_path: str) -> Path:
+        """Save the approved spec and scaffold the project structure.
+
+        Returns:
+            The project root directory that was scaffolded.
+        """
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.gherkin_draft + "\n", encoding="utf-8")
+
+        # Project root is two levels up when the spec lives in specs/, otherwise
+        # treat the spec's parent directory as the root.
+        project_root = path.parent.parent if path.parent.name == "specs" else path.parent
+        self._setup_project(project_root)
+        return project_root
+
+    def _setup_project(self, project_root: Path) -> None:
+        """Create the implementation scaffold expected by Phase 2."""
+        (project_root / "src").mkdir(exist_ok=True)
+        (project_root / "features" / "steps").mkdir(parents=True, exist_ok=True)
+
+        dst = project_root / "IMPLEMENTATION_INSTRUCTIONS.md"
+        if not dst.exists():
+            src = Path(__file__).parent.parent / "data" / "IMPLEMENTATION_INSTRUCTIONS.md"
+            if src.exists():
+                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
