@@ -48,8 +48,9 @@ def cli() -> None:
     """Clarity Engine — a software observatory.
 
     \b
-    clarity init            Phase 1: interactively generate a Gherkin spec
-    clarity report <path>   Phase 2: generate a transparency report
+    clarity init                    Phase 1: interactively generate a Gherkin spec
+    clarity report <path>           Phase 2: generate a transparency report
+    clarity compare <dir_a> <dir_b> Phase 3: compare two Phase 2 reports
     """
 
 
@@ -84,6 +85,43 @@ def init(name: str | None, output: str | None, model: str | None) -> None:
             output_path=output,
             model=resolved_model,
         )
+    except click.ClickException:
+        raise
+    except Exception as exc:  # pragma: no cover
+        raise click.ClickException(str(exc)) from exc
+
+
+@cli.command()
+@click.argument("report_a", metavar="REPORT_A")
+@click.argument("report_b", metavar="REPORT_B")
+@click.option(
+    "--output", "-o",
+    default=None,
+    help="Output directory for compare.html (default: current directory).",
+)
+def compare(report_a: str, report_b: str, output: str | None) -> None:
+    """Phase 3: compare two Phase 2 report directories side-by-side.
+
+    REPORT_A and REPORT_B must each be directories containing a data.json
+    file produced by 'clarity report'.  The two reports must cover identical
+    feature/scenario sets.
+    """
+    from .phase3.comparison_engine import load_report, build_comparison
+    from .phase3.comparison_builder import ComparisonBuilder
+
+    if output is None:
+        output = "."
+
+    try:
+        data_a = load_report(report_a)
+        data_b = load_report(report_b)
+        comparison = build_comparison(data_a, data_b)
+        path = ComparisonBuilder().build(comparison, output)
+        click.echo(f"\n✓ Comparison report generated: {path}")
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
     except click.ClickException:
         raise
     except Exception as exc:  # pragma: no cover
