@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clarity — Comparison Report</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f8f9fa; color: #212529;
+    }
+    header {
+      background: #1a1a2e; color: #fff;
+      padding: 1.5rem 2rem;
+    }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    header .subtitle { margin: 0.25rem 0 0; opacity: 0.75; font-size: 0.9rem; }
+    .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+
+    .legend {
+      display: flex; gap: 1.5rem; margin-bottom: 1.5rem;
+      background: #fff; border-radius: 8px; padding: 1rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+    .badge { display: inline-block; border-radius: 4px; padding: 0.15em 0.5em; font-weight: 600; font-size: 0.8rem; }
+    .badge-a { background: #cfe2ff; color: #084298; }
+    .badge-b { background: #d1e7dd; color: #0a3622; }
+    .badge-hotspot { background: #f8d7da; color: #842029; }
+
+    .feature-card {
+      background: #fff; border-radius: 8px; margin-bottom: 2rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      overflow: hidden;
+    }
+    .feature-header {
+      background: #1a1a2e; color: #fff;
+      padding: 0.75rem 1.25rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .feature-header h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { padding: 0.6rem 1rem; text-align: left; }
+    th { background: #f1f3f5; font-weight: 600; color: #495057; }
+    tr:not(:last-child) td { border-bottom: 1px solid #dee2e6; }
+    tr:hover td { background: #f8f9fa; }
+
+    .summary-table { border-top: 1px solid #dee2e6; }
+    .summary-table td:first-child { font-weight: 600; }
+
+    .delta { font-size: 0.78rem; }
+    .delta-pos { color: #dc3545; }  /* bigger = worse for CC; context-dependent */
+    .delta-neg { color: #198754; }
+    .delta-neutral { color: #6c757d; }
+
+    .hotspot-a { background: rgba(220,53,69,.08); }
+    .hotspot-b { background: rgba(220,53,69,.08); }
+    .hotspot-both { background: rgba(220,53,69,.14); }
+
+    footer {
+      text-align: center; font-size: 0.78rem; color: #6c757d;
+      padding: 2rem 1rem;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Clarity — Comparison Report</h1>
+  <p class="subtitle">
+    <span class="badge badge-a">A</span> {{ data.project_name_a }}
+    &nbsp;vs&nbsp;
+    <span class="badge badge-b">B</span> {{ data.project_name_b }}
+    &nbsp;·&nbsp; Generated {{ generated_at }}
+  </p>
+</header>
+
+<div class="container">
+
+  <div class="legend">
+    <div class="legend-item"><span class="badge badge-a">A</span> {{ data.project_name_a }}</div>
+    <div class="legend-item"><span class="badge badge-b">B</span> {{ data.project_name_b }}</div>
+    <div class="legend-item"><span class="badge badge-hotspot">hotspot</span> Complexity Hotspot (CC ≥ 2× feature average)</div>
+  </div>
+
+  {% for feature in data.features %}
+  <div class="feature-card">
+    <div class="feature-header">
+      <h2>{{ feature.name }}</h2>
+      <span style="opacity:.75; font-size:.85rem;">{{ feature.total_scenarios }} scenario{{ 's' if feature.total_scenarios != 1 else '' }}</span>
+    </div>
+
+    {# Feature-level summary row #}
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th><span class="badge badge-a">A</span> {{ data.project_name_a }}</th>
+          <th><span class="badge badge-b">B</span> {{ data.project_name_b }}</th>
+          <th>Delta (B − A)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Total Code Footprint (LOC)</td>
+          <td>{{ feature.total_loc_a }}</td>
+          <td>{{ feature.total_loc_b }}</td>
+          <td>
+            {% set d = feature.loc_delta %}
+            <span class="delta {% if d > 0 %}delta-pos{% elif d < 0 %}delta-neg{% else %}delta-neutral{% endif %}">
+              {% if d > 0 %}+{% endif %}{{ d }}
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td>Overall Cyclomatic Complexity</td>
+          <td>{{ feature.overall_cc_a }}</td>
+          <td>{{ feature.overall_cc_b }}</td>
+          <td>
+            {% set d = feature.cc_delta %}
+            <span class="delta {% if d > 0 %}delta-pos{% elif d < 0 %}delta-neg{% else %}delta-neutral{% endif %}">
+              {% if d > 0 %}+{% endif %}{{ d }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    {# Per-scenario breakdown #}
+    <table>
+      <thead>
+        <tr>
+          <th>Scenario</th>
+          <th>LOC (A)</th>
+          <th>LOC (B)</th>
+          <th>LOC Δ</th>
+          <th>CC (A)</th>
+          <th>CC (B)</th>
+          <th>CC Δ</th>
+          <th>Unique LOC (A)</th>
+          <th>Unique LOC (B)</th>
+          <th>Hotspot?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sc in feature.scenarios %}
+        {% set row_class = '' %}
+        {% if sc.is_hotspot_a and sc.is_hotspot_b %}{% set row_class = 'hotspot-both' %}
+        {% elif sc.is_hotspot_a %}{% set row_class = 'hotspot-a' %}
+        {% elif sc.is_hotspot_b %}{% set row_class = 'hotspot-b' %}{% endif %}
+        <tr class="{{ row_class }}">
+          <td>{{ sc.name }}</td>
+          <td>{{ sc.loc_a }}</td>
+          <td>{{ sc.loc_b }}</td>
+          <td>
+            {% set d = sc.loc_delta %}
+            <span class="delta {% if d > 0 %}delta-pos{% elif d < 0 %}delta-neg{% else %}delta-neutral{% endif %}">
+              {% if d > 0 %}+{% endif %}{{ d }}
+            </span>
+          </td>
+          <td>{{ sc.cc_a }}</td>
+          <td>{{ sc.cc_b }}</td>
+          <td>
+            {% set d = sc.cc_delta %}
+            <span class="delta {% if d > 0 %}delta-pos{% elif d < 0 %}delta-neg{% else %}delta-neutral{% endif %}">
+              {% if d > 0 %}+{% endif %}{{ d }}
+            </span>
+          </td>
+          <td>{{ sc.unique_loc_a }}</td>
+          <td>{{ sc.unique_loc_b }}</td>
+          <td>
+            {% if sc.is_hotspot_a and sc.is_hotspot_b %}<span class="badge badge-hotspot">A &amp; B</span>
+            {% elif sc.is_hotspot_a %}<span class="badge badge-hotspot">A</span>
+            {% elif sc.is_hotspot_b %}<span class="badge badge-hotspot">B</span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+</div>
+<footer>Generated by Clarity Engine &mdash; {{ generated_at }}</footer>
+</body>
+</html>

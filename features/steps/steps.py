@@ -825,3 +825,193 @@ def step_init_not_proceeded(context):
     assert "Describe your project" not in context.cli_result.output, (
         f"Session should not have started.\nOutput:\n{context.cli_result.output}"
     )
+
+
+# ===========================================================================
+# Feature 4 — Comparison Report (Phase 3)
+# ===========================================================================
+
+def _make_report_dir(base_dir: str, name: str, project_name: str,
+                     features_data: list | None = None) -> str:
+    """Create a minimal Phase 2 report directory with data.json."""
+    report_dir = os.path.join(base_dir, name)
+    os.makedirs(report_dir, exist_ok=True)
+
+    if features_data is None:
+        features_data = [
+            {
+                "name": "Calculator Operations",
+                "total_scenarios": 2,
+                "total_loc": 30,
+                "overall_cc": 3.5,
+                "component_dependencies": ["src/app.py"],
+                "scenarios": [
+                    {
+                        "name": "Adding two numbers",
+                        "loc": 15,
+                        "cyclomatic_complexity": 2.0,
+                        "unique_loc": 10,
+                        "is_hotspot": False,
+                    },
+                    {
+                        "name": "Dividing by zero",
+                        "loc": 20,
+                        "cyclomatic_complexity": 5.0,
+                        "unique_loc": 12,
+                        "is_hotspot": False,
+                    },
+                ],
+            }
+        ]
+
+    import json as _json
+    data = {"project_name": project_name, "features": features_data}
+    with open(os.path.join(report_dir, "data.json"), "w", encoding="utf-8") as fh:
+        _json.dump(data, fh)
+
+    return report_dir
+
+
+def _run_compare(report_a: str, report_b: str, output_dir: str) -> object:
+    """Invoke 'clarity compare <report_a> <report_b> --output <output_dir>'."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["compare", report_a, report_b, "--output", output_dir],
+        catch_exceptions=True,
+    )
+    return result
+
+
+@given("two Phase 2 report directories exist for the same specification")
+def step_two_matching_reports(context):
+    context.report_dir_a = _make_report_dir(
+        context.scenario_tmp, "report_a", "impl_opus"
+    )
+    context.report_dir_b = _make_report_dir(
+        context.scenario_tmp, "report_b", "impl_sonnet"
+    )
+    context.compare_output = os.path.join(context.scenario_tmp, "comparison")
+
+
+@when("I run clarity compare on the two report directories")
+def step_run_compare(context):
+    context.compare_result = _run_compare(
+        context.report_dir_a,
+        context.report_dir_b,
+        context.compare_output,
+    )
+
+
+@then('a "compare.html" file should be created in the output directory')
+def step_compare_html_exists(context):
+    compare_file = os.path.join(context.compare_output, "compare.html")
+    assert os.path.exists(compare_file), (
+        f"compare.html not found at {compare_file}\n"
+        f"Command output:\n{context.compare_result.output}"
+    )
+    assert context.compare_result.exit_code == 0, (
+        f"compare command failed.\nOutput:\n{context.compare_result.output}"
+    )
+    with open(compare_file, encoding="utf-8") as fh:
+        context.compare_html = fh.read()
+
+
+@then("the comparison report should contain both project names")
+def step_compare_has_project_names(context):
+    assert "impl_opus" in context.compare_html, "Project name A not found in compare.html"
+    assert "impl_sonnet" in context.compare_html, "Project name B not found in compare.html"
+
+
+@then("the comparison report should contain side-by-side metrics for each feature")
+def step_compare_has_feature_metrics(context):
+    assert "Calculator Operations" in context.compare_html, (
+        "Feature name not found in compare.html"
+    )
+    assert "Total Code Footprint (LOC)" in context.compare_html, (
+        "LOC column not found in compare.html"
+    )
+    assert "Overall Cyclomatic Complexity" in context.compare_html, (
+        "CC column not found in compare.html"
+    )
+
+
+@then("the comparison report should contain per-scenario delta columns")
+def step_compare_has_delta_columns(context):
+    assert "Adding two numbers" in context.compare_html, (
+        "Scenario name not found in compare.html"
+    )
+    assert "Dividing by zero" in context.compare_html, (
+        "Scenario name not found in compare.html"
+    )
+    # Delta column header
+    assert "Delta" in context.compare_html or "\u0394" in context.compare_html, (
+        "No delta column found in compare.html"
+    )
+
+
+@given("two Phase 2 report directories with different feature sets exist")
+def step_two_mismatched_reports(context):
+    context.report_dir_a = _make_report_dir(
+        context.scenario_tmp, "report_a", "impl_a",
+        features_data=[{
+            "name": "Calculator Operations",
+            "total_scenarios": 1,
+            "total_loc": 10,
+            "overall_cc": 2.0,
+            "component_dependencies": [],
+            "scenarios": [
+                {"name": "Adding two numbers", "loc": 10, "cyclomatic_complexity": 2.0,
+                 "unique_loc": 8, "is_hotspot": False},
+            ],
+        }],
+    )
+    context.report_dir_b = _make_report_dir(
+        context.scenario_tmp, "report_b", "impl_b",
+        features_data=[{
+            "name": "Login Feature",
+            "total_scenarios": 1,
+            "total_loc": 15,
+            "overall_cc": 3.0,
+            "component_dependencies": [],
+            "scenarios": [
+                {"name": "Successful login", "loc": 15, "cyclomatic_complexity": 3.0,
+                 "unique_loc": 10, "is_hotspot": False},
+            ],
+        }],
+    )
+    context.compare_output = os.path.join(context.scenario_tmp, "comparison")
+
+
+@then('the command should fail with an error containing "{message}"')
+def step_command_fails_with_message(context, message):
+    assert context.compare_result.exit_code != 0, (
+        f"Expected non-zero exit code but command succeeded.\n"
+        f"Output:\n{context.compare_result.output}"
+    )
+    combined = context.compare_result.output or ""
+    if context.compare_result.exception:
+        combined += str(context.compare_result.exception)
+    assert message in combined, (
+        f"Expected error message '{message}' not found.\nOutput:\n{combined}"
+    )
+
+
+@given("a report directory that is missing its data.json file")
+def step_report_missing_json(context):
+    missing = os.path.join(context.scenario_tmp, "empty_report")
+    os.makedirs(missing, exist_ok=True)
+    context.missing_report = missing
+    context.valid_report = _make_report_dir(
+        context.scenario_tmp, "valid_report", "impl_valid"
+    )
+    context.compare_output = os.path.join(context.scenario_tmp, "comparison")
+
+
+@when("I run clarity compare on the missing and a valid report directory")
+def step_run_compare_missing(context):
+    context.compare_result = _run_compare(
+        context.missing_report,
+        context.valid_report,
+        context.compare_output,
+    )
